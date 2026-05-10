@@ -4,6 +4,7 @@ from flask_cors import CORS
 # Import Configuration and Database
 from config import Config
 from database import db
+from schema import ensure_schema
 
 # Import Blueprints (Routes)
 from auth_routes import auth_bp
@@ -31,5 +32,6 @@ if __name__ == "__main__":
     # Create the database tables if they don't exist yet
     with app.app_context():
         db.create_all()
+        ensure_schema()
         
     app.run(debug=True, port=5000)

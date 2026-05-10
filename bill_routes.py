@@ -1,7 +1,10 @@
 from flask import Blueprint, jsonify
 from database import db
 from models import Bill
-from config import BILL_STATUS_UNPAID, BILL_STATUS_PAID, EXCHANGE_RATES
+from config import (
+    BILL_STATUS_UNPAID, BILL_STATUS_PAID, EXCHANGE_RATES,
+    VALID_CURRENCIES, VALID_BILL_CATEGORIES
+)
 from utils import (
     get_request_data, get_current_user_id, login_required,
     error_response, success_response, parse_date, format_date,
@@ -17,7 +20,9 @@ def serialize_bill(bill):
     return {
         "id": bill.id,
         "name": bill.name,
+        "category": bill.category,
         "amount": bill.amount,
+        "currency": bill.currency,
         "due_date": format_date(bill.due_date),
         "frequency": bill.frequency,
         "status": bill.status,
@@ -41,11 +46,19 @@ def add_bill():
     frequency_error = validate_frequency(data["frequency"])
     if frequency_error:
         return error_response(frequency_error, 400)
+    currency = str(data.get("currency", "USD")).upper()
+    if currency not in VALID_CURRENCIES:
+        return error_response(f"Invalid currency. Use one of: {', '.join(sorted(VALID_CURRENCIES))}", 400)
+    category = str(data.get("category", "other")).lower()
+    if category not in VALID_BILL_CATEGORIES:
+        return error_response(f"Invalid bill type. Use one of: {', '.join(sorted(VALID_BILL_CATEGORIES))}", 400)
     try:
         new_bill = Bill(
             user_id=get_current_user_id(),
             name=data["name"],
+            category=category,
             amount=float(data["amount"]),
+            currency=currency,
             due_date=parse_date(data["due_date"]),
             frequency=data["frequency"],
             status=BILL_STATUS_UNPAID,
@@ -66,8 +79,18 @@ def update_bill(bill_id):
     try:
         if "name" in data:
             bill.name = data["name"]
+        if "category" in data:
+            category = str(data["category"]).lower()
+            if category not in VALID_BILL_CATEGORIES:
+                return error_response(f"Invalid bill type. Use one of: {', '.join(sorted(VALID_BILL_CATEGORIES))}", 400)
+            bill.category = category
         if "amount" in data:
             bill.amount = float(data["amount"])
+        if "currency" in data:
+            currency = str(data["currency"]).upper()
+            if currency not in VALID_CURRENCIES:
+                return error_response(f"Invalid currency. Use one of: {', '.join(sorted(VALID_CURRENCIES))}", 400)
+            bill.currency = currency
         if "due_date" in data:
             bill.due_date = parse_date(data["due_date"])
         if "frequency" in data:

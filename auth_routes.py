@@ -1,64 +1,68 @@
-from flask import Blueprint, session, jsonify
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask import Blueprint, jsonify
 
-from database import db
-from models import User
-from utils import (
-    get_request_data, 
-    validate_required_fields, 
-    error_response, 
-    success_response
-)
+from auth_service import AuthService
+from auth_validation import validate_login, validate_signup
+from reminder_service import ReminderService
+from utils import get_request_data, error_response, success_response
 
 auth_bp = Blueprint('auth', __name__)
+auth_service = AuthService()
+reminder_service = ReminderService()
+
+
+def auth_response(message, user, status_code=200):
+    return jsonify({
+        "message": message,
+        "user": user.to_dict(),
+    }), status_code
+
 
 @auth_bp.route("/api/register", methods=["POST"])
 def register_user():
-    data = get_request_data()
+    credentials, validation_error = validate_signup(get_request_data())
+    if validation_error:
+        return error_response(validation_error, 400)
 
-    required_error = validate_required_fields(data, ["username", "email", "password"])
-    if required_error:
-        return error_response(required_error, 400)
+    try:
+        user = auth_service.register(
+            username=credentials["username"],
+            email=credentials["email"],
+            password=credentials["password"],
+        )
+    except ValueError as error:
+        return error_response(str(error), 409)
 
-    existing_user = User.query.filter_by(email=data["email"]).first()
-    if existing_user:
-        return error_response("Email already exists", 400)
-
-    new_user = User(
-        username=data["username"],
-        email=data["email"],
-        password_hash=generate_password_hash(data["password"], method="pbkdf2:sha256")
-    )
-
-    db.session.add(new_user)
-    db.session.commit()
-
-    return success_response("User registered successfully", 201)
+    return auth_response("User registered successfully", user, 201)
 
 
 @auth_bp.route("/api/login", methods=["POST"])
 def login_user():
-    data = get_request_data()
+    credentials, validation_error = validate_login(get_request_data())
+    if validation_error:
+        return error_response(validation_error, 400)
 
-    required_error = validate_required_fields(data, ["email", "password"])
-    if required_error:
-        return error_response(required_error, 400)
+    try:
+        user = auth_service.login(
+            email=credentials["email"],
+            password=credentials["password"],
+        )
+    except ValueError as error:
+        return error_response(str(error), 401)
 
-    user = User.query.filter_by(email=data["email"]).first()
+    reminder_service.send_due_emails(user)
+    return auth_response("Login successful", user)
 
-    if not user or not check_password_hash(user.password_hash, data["password"]):
-        return error_response("Invalid email or password", 401)
 
-    session["user_id"] = user.id
-    session.permanent = True
+@auth_bp.route("/api/me", methods=["GET"])
+def get_current_user():
+    user = auth_service.current_user()
+    if not user:
+        return error_response("Unauthorized access", 401)
 
-    return jsonify({
-        "message": "Login successful",
-        "username": user.username
-    }), 200
+    return jsonify({"user": user.to_dict()}), 200
 
 
 @auth_bp.route("/api/logout", methods=["POST"])
 def logout_user():
-    session.pop("user_id", None)
+    auth_service.logout()
     return success_response("Logged out successfully")
