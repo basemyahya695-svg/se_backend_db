@@ -1,7 +1,7 @@
 from flask import jsonify, request, session
 from functools import wraps
 from datetime import datetime
-from config import DATE_FORMAT, VALID_FREQUENCIES
+from config import DATE_FORMAT, VALID_FREQUENCIES, EXCHANGE_RATES
 
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
@@ -39,3 +39,13 @@ def validate_frequency(frequency):
     if frequency not in VALID_FREQUENCIES:
         return f"Invalid frequency. Use one of: {', '.join(VALID_FREQUENCIES)}"
     return None
+
+def convert_currency(amount, target_currency):
+    """Converts an amount from USD to the target currency based on config rates."""
+    target_currency = target_currency.upper()
+    rate = EXCHANGE_RATES.get(target_currency)
+    
+    if rate is None:
+        return None
+        
+    return round(amount * rate, 2)
