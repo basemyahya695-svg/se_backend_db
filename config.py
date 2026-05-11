@@ -6,15 +6,17 @@ class Config:
     SQLALCHEMY_DATABASE_URI = "sqlite:///myhome.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=10)
-    MAIL_SERVER = os.environ.get("MAIL_SERVER", "")
-    MAIL_PORT = int(os.environ.get("MAIL_PORT", "587"))
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", "465"))
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
-    MAIL_FROM = os.environ.get("MAIL_FROM", "tariqiskandar2@gmail.com")
-    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_FROM = os.environ.get("MAIL_FROM", os.environ.get("MAIL_USERNAME", ""))
+    MAIL_USE_SSL = os.environ.get("MAIL_USE_SSL", "true").lower() == "true"
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "false").lower() == "true"
 
 # Constants used across different files
-REMINDER_DAYS_AHEAD = 3
+EMAIL_REMINDER_DAYS_AHEAD = 14
+POPUP_REMINDER_DAYS_AHEAD = 3
 DATE_FORMAT = "%Y-%m-%d"
 BILL_STATUS_UNPAID = "unpaid"
 BILL_STATUS_PAID = "paid"

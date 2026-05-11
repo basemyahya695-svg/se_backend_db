@@ -47,5 +47,5 @@ def get_reminders():
 @login_required
 def send_reminder_email():
     user = users.find_by_id(get_current_user_id())
-    result = reminders.send_due_emails(user)
+    result = reminders.send_current_month_unpaid_email(user)
     return jsonify(result), 200
