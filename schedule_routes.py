@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify
 from models import Bill
 from auth_service import UserRepository
 from reminder_service import ReminderService
-from utils import get_current_user_id, login_required, format_date
+from utils import get_current_user_id, get_request_data, login_required, format_date
 
 schedule_bp = Blueprint('schedule', __name__)
 reminders = ReminderService()
@@ -47,5 +47,10 @@ def get_reminders():
 @login_required
 def send_reminder_email():
     user = users.find_by_id(get_current_user_id())
-    result = reminders.send_current_month_unpaid_email(user)
+    request_data = get_request_data()
+    result = reminders.send_current_month_unpaid_email(
+        user,
+        paid_occurrences=request_data.get("paid_occurrences", {}),
+        unpaid_occurrences=request_data.get("unpaid_occurrences"),
+    )
     return jsonify(result), 200
